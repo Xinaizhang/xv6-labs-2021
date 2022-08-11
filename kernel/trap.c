@@ -29,6 +29,42 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+void 
+store(void){
+  struct proc *p = myproc();
+  p->tick_ra = p->trapframe->ra;
+  p->tick_sp = p->trapframe->sp;
+  p->tick_gp = p->trapframe->gp;
+  p->tick_tp = p->trapframe->tp;
+  p->tick_t0 = p->trapframe->t0;
+  p->tick_t1 = p->trapframe->t1;
+  p->tick_t2 = p->trapframe->t2;
+  p->tick_s0 = p->trapframe->s0;
+  p->tick_s1 = p->trapframe->s1;
+  p->tick_a0 = p->trapframe->a0;
+  p->tick_a1 = p->trapframe->a1;
+  p->tick_a2 = p->trapframe->a2;
+  p->tick_a3 = p->trapframe->a3;
+  p->tick_a4 = p->trapframe->a4;
+  p->tick_a5 = p->trapframe->a5;
+  p->tick_a6 = p->trapframe->a6;
+  p->tick_a7 = p->trapframe->a7;
+  p->tick_s2 = p->trapframe->s2;
+  p->tick_s3 = p->trapframe->s3;
+  p->tick_s4 = p->trapframe->s4;
+  p->tick_s5 = p->trapframe->s5;
+  p->tick_s6 = p->trapframe->s6;
+  p->tick_s7 = p->trapframe->s7;
+  p->tick_s8 = p->trapframe->s8;
+  p->tick_s9 = p->trapframe->s9;
+  p->tick_s10 = p->trapframe->s10;
+  p->tick_s11 = p->trapframe->s11;
+  p->tick_t3 = p->trapframe->t3;
+  p->tick_t4 = p->trapframe->t4;
+  p->tick_t5 = p->trapframe->t5;
+  p->tick_t6 = p->trapframe->t6;
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -66,7 +102,19 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+    //ok
+    /*if(which_dev ==2 && p->waitReturn==0){
+      if(p->interval !=0){
+        p->spend = p->spend + 1;
+        if(p->spend == p->interval){
+          switchTrapframe(p->trapframeSave,p->trapframe);
+          p->spend = 0;
+          p->trapframe->epc = (uint64)p->handler;
+          p->waitReturn = 1;
+        }
+      }
+    }*/
+
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -77,8 +125,21 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if(p->ticks>0){
+      p->ticks_cnt++;
+      if(p->handler_executing == 0 && p->ticks_cnt > p->ticks){
+        p->ticks_cnt=0;
+
+        p->tick_epc = p->trapframe->epc;
+        store();
+        p->handler_executing=1;
+        p->trapframe->epc=p->handler;
+      }
+    }
     yield();
+
+  }
 
   usertrapret();
 }
@@ -218,3 +279,41 @@ devintr()
   }
 }
 
+/*void switchTrapframe(struct trapframe* trapframe, struct trapframe *trapframeSave){
+  trapframe->kernel_satp = trapframeSave->kernel_satp;
+  trapframe->kernel_sp = trapframeSave->kernel_sp;
+  trapframe->epc = trapframeSave->epc;
+  trapframe->kernel_hartid = trapframeSave->kernel_hartid;
+  trapframe->ra = trapframeSave->ra;
+  trapframe->sp = trapframeSave->sp;
+  trapframe->gp = trapframeSave->gp;
+  trapframe->tp = trapframeSave->tp;
+  trapframe->t0 = trapframeSave->t0;
+  trapframe->t1 = trapframeSave->t1;
+  trapframe->t2 = trapframeSave->t2;
+  trapframe->s0 = trapframeSave->s0;
+  trapframe->s1 = trapframeSave->s1;
+  trapframe->a0 = trapframeSave->a0;
+  trapframe->a1 = trapframeSave->a1;
+  trapframe->a2 = trapframeSave->a2;
+  trapframe->a3 = trapframeSave->a3;
+  trapframe->a4 = trapframeSave->a4;
+  trapframe->a5 = trapframeSave->a5;
+  trapframe->a6 = trapframeSave->a6;
+  trapframe->a7 = trapframeSave->a7;
+  trapframe->s2 = trapframeSave->s2;
+  trapframe->s3 = trapframeSave->s3;
+  trapframe->s4 = trapframeSave->s4;
+  trapframe->s5 = trapframeSave->s5;
+  trapframe->s6 = trapframeSave->s6;
+  trapframe->s7 = trapframeSave->s7;
+  trapframe->s8 = trapframeSave->s8;
+  trapframe->s9 = trapframeSave->s9;
+  trapframe->s10 = trapframeSave->s10;
+  trapframe->s11 = trapframeSave->s11;
+  trapframe->t3 = trapframeSave->t3;
+  trapframe->t4 = trapframeSave->t4;
+  trapframe->t5 = trapframeSave->t5;
+  trapframe->t6 = trapframeSave->t6;
+}
+*/
